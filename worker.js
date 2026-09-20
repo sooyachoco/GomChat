@@ -30,27 +30,32 @@ export class ChatRoom {
     server.addEventListener("message", async event => {
       try {
         const msg = JSON.parse(event.data);
+        if (msg.type === "delete") {
+          const messageId = String(msg.messageId || "");
+          const requester = String(msg.name || "").slice(0, 20);
+          if (!messageId || !requester) return;
+          const current = (await this.state.storage.get("messages")) || [];
+          const target = current.find(m => m.id === messageId);
+          if (!target || target.name !== requester) return;
+          const next = current.filter(m => m.id !== messageId);
+          await this.state.storage.put("messages", next);
+          const payload = JSON.stringify({ type: "delete", messageId });
+          for (const ws of this.sessions.values()) { try { ws.send(payload); } catch (_) {} }
+          return;
+        }
         if (msg.type !== "message") return;
         const name = String(msg.name || "익명").slice(0, 20);
         const text = String(msg.text || "").slice(0, 2000);
         const image = typeof msg.image === "string" ? msg.image : "";
         if (!text && !image) return;
         if (image && (!image.startsWith("data:image/") || image.length > 450000)) return;
-        const item = {
-          id: crypto.randomUUID(),
-          name,
-          text,
-          image,
-          time: new Date().toISOString()
-        };
+        const item = { id: crypto.randomUUID(), name, text, image, time: new Date().toISOString() };
         const current = (await this.state.storage.get("messages")) || [];
         current.push(item);
         if (current.length > 500) current.splice(0, current.length - 500);
         await this.state.storage.put("messages", current);
         const payload = JSON.stringify({ type: "message", message: item });
-        for (const ws of this.sessions.values()) {
-          try { ws.send(payload); } catch (_) {}
-        }
+        for (const ws of this.sessions.values()) { try { ws.send(payload); } catch (_) {} }
       } catch (_) {}
     });
     const close = () => this.sessions.delete(id);
