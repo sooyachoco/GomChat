@@ -1,0 +1,8 @@
+.git/
+.wrangler/
+worker.js
+wrangler.toml
+wrangler.json
+wrangler.jsonc
+*.md
+.gitignore
