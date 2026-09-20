@@ -1,7 +1,31 @@
+import { sendPushNotification } from "@mmmike/web-push/send";
+
+const PUSH_USER = "승수";
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     if (url.pathname === "/health") return new Response("ok");
+
+    if (url.pathname === "/api/push/subscribe" && request.method === "POST") {
+      try {
+        const body = await request.json();
+        if (String(body.name || "") !== PUSH_USER) return new Response("forbidden", { status: 403 });
+        const sub = body.subscription || {};
+        if (!sub.endpoint || !sub.keys?.p256dh || !sub.keys?.auth || !String(sub.endpoint).startsWith("https://")) {
+          return new Response("invalid subscription", { status: 400 });
+        }
+        const id = env.CHAT_ROOM.idFromName("default");
+        return env.CHAT_ROOM.get(id).fetch(new Request("https://internal/push/subscribe", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ name: body.name, subscription: sub })
+        }));
+      } catch (_) {
+        return new Response("bad request", { status: 400 });
+      }
+    }
+
     if (url.pathname === "/ws") {
       if (request.headers.get("Upgrade") !== "websocket") return new Response("WebSocket required", { status: 426 });
       const room = url.searchParams.get("room") || "default";
@@ -13,12 +37,38 @@ export default {
 };
 
 export class ChatRoom {
-  constructor(state) {
+  constructor(state, env) {
     this.state = state;
+    this.env = env;
     this.sessions = new Map();
   }
 
   async fetch(request) {
+    const url = new URL(request.url);
+
+    if (url.pathname === "/push/subscribe" && request.method === "POST") {
+      try {
+        const body = await request.json();
+        if (String(body.name || "") !== PUSH_USER) return new Response("forbidden", { status: 403 });
+        const sub = body.subscription || {};
+        if (!sub.endpoint || !sub.keys?.p256dh || !sub.keys?.auth || !String(sub.endpoint).startsWith("https://")) {
+          return new Response("invalid subscription", { status: 400 });
+        }
+        const subs = (await this.state.storage.get("pushSubscriptions")) || [];
+        const next = subs.filter(s => s.endpoint !== sub.endpoint);
+        next.push({ endpoint: sub.endpoint, keys: { p256dh: sub.keys.p256dh, auth: sub.keys.auth } });
+        if (next.length > 5) next.splice(0, next.length - 5);
+        await this.state.storage.put("pushSubscriptions", next);
+        return new Response("ok");
+      } catch (_) {
+        return new Response("bad request", { status: 400 });
+      }
+    }
+
+    if (url.pathname === "/push/list" && request.method === "GET") {
+      return Response.json((await this.state.storage.get("pushSubscriptions")) || []);
+    }
+
     if (request.headers.get("Upgrade") !== "websocket") return new Response("WebSocket required", { status: 426 });
     const pair = new WebSocketPair();
     const [client, server] = Object.values(pair);
@@ -56,11 +106,34 @@ export class ChatRoom {
         await this.state.storage.put("messages", current);
         const payload = JSON.stringify({ type: "message", message: item });
         for (const ws of this.sessions.values()) { try { ws.send(payload); } catch (_) {} }
+        if (name === "지연") await this.sendPushToMe(item);
       } catch (_) {}
     });
     const close = () => this.sessions.delete(id);
     server.addEventListener("close", close);
     server.addEventListener("error", close);
     return new Response(null, { status: 101, webSocket: client });
+  }
+
+  async sendPushToMe(item) {
+    const publicKey = this.env.VAPID_PUBLIC_KEY;
+    const privateKey = this.env.VAPID_PRIVATE_KEY;
+    const subject = this.env.VAPID_SUBJECT;
+    if (!publicKey || !privateKey || !subject) return;
+    const subs = (await this.state.storage.get("pushSubscriptions")) || [];
+    if (!subs.length) return;
+    const stale = new Set();
+    for (const sub of subs) {
+      try {
+        const delivered = await sendPushNotification(sub, {
+          title: "곰채팅",
+          body: item.text ? item.text.slice(0, 100) : "사진을 보냈어요.",
+          url: "/",
+          tag: "gomchat-message"
+        }, { publicKey, privateKey, subject }, { ttl: 86400, urgency: "high", topic: "gomchat-message" });
+        if (!delivered) stale.add(sub.endpoint);
+      } catch (_) {}
+    }
+    if (stale.size) await this.state.storage.put("pushSubscriptions", subs.filter(s => !stale.has(s.endpoint)));
   }
 }
