@@ -30,8 +30,19 @@ export class ChatRoom {
     server.addEventListener("message", async event => {
       try {
         const msg = JSON.parse(event.data);
-        if (msg.type !== "message" || !msg.text) return;
-        const item = { id: crypto.randomUUID(), name: String(msg.name || "익명").slice(0, 20), text: String(msg.text).slice(0, 2000), time: new Date().toISOString() };
+        if (msg.type !== "message") return;
+        const name = String(msg.name || "익명").slice(0, 20);
+        const text = String(msg.text || "").slice(0, 2000);
+        const image = typeof msg.image === "string" ? msg.image : "";
+        if (!text && !image) return;
+        if (image && (!image.startsWith("data:image/") || image.length > 450000)) return;
+        const item = {
+          id: crypto.randomUUID(),
+          name,
+          text,
+          image,
+          time: new Date().toISOString()
+        };
         const current = (await this.state.storage.get("messages")) || [];
         current.push(item);
         if (current.length > 500) current.splice(0, current.length - 500);
