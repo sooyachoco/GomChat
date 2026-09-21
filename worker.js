@@ -1,6 +1,8 @@
 import { sendPushNotification } from "@mmmike/web-push/send";
 
 const PUSH_USER = "승수";
+const RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
+const CLEANUP_INTERVAL_MS = 24 * 60 * 60 * 1000;
 
 export default {
   async fetch(request, env) {
@@ -43,6 +45,40 @@ export class ChatRoom {
     this.sessions = new Map();
   }
 
+  async pruneOldMessages() {
+    const current = (await this.state.storage.get("messages")) || [];
+    const cutoff = Date.now() - RETENTION_MS;
+    const next = current.filter(m => {
+      const t = Date.parse(m.time || "");
+      return Number.isFinite(t) && t >= cutoff;
+    });
+    if (next.length !== current.length) await this.state.storage.put("messages", next);
+    return next;
+  }
+
+  async scheduleCleanup() {
+    const alarm = await this.state.storage.getAlarm();
+    if (alarm == null) await this.state.storage.setAlarm(Date.now() + CLEANUP_INTERVAL_MS);
+  }
+
+  async alarm() {
+    try {
+      const current = (await this.state.storage.get("messages")) || [];
+      const cutoff = Date.now() - RETENTION_MS;
+      const next = current.filter(m => {
+        const t = Date.parse(m.time || "");
+        return Number.isFinite(t) && t >= cutoff;
+      });
+      if (next.length !== current.length) {
+        await this.state.storage.put("messages", next);
+        const payload = JSON.stringify({ type: "history_pruned" });
+        for (const ws of this.sessions.values()) { try { ws.send(payload); } catch (_) {} }
+      }
+    } finally {
+      await this.state.storage.setAlarm(Date.now() + CLEANUP_INTERVAL_MS);
+    }
+  }
+
   async fetch(request) {
     const url = new URL(request.url);
 
@@ -59,6 +95,7 @@ export class ChatRoom {
         next.push({ endpoint: sub.endpoint, keys: { p256dh: sub.keys.p256dh, auth: sub.keys.auth } });
         if (next.length > 5) next.splice(0, next.length - 5);
         await this.state.storage.put("pushSubscriptions", next);
+        await this.scheduleCleanup();
         return new Response("ok");
       } catch (_) {
         return new Response("bad request", { status: 400 });
@@ -70,6 +107,8 @@ export class ChatRoom {
     }
 
     if (request.headers.get("Upgrade") !== "websocket") return new Response("WebSocket required", { status: 426 });
+    await this.pruneOldMessages();
+    await this.scheduleCleanup();
     const pair = new WebSocketPair();
     const [client, server] = Object.values(pair);
     server.accept();
@@ -100,10 +139,11 @@ export class ChatRoom {
         if (!text && !image) return;
         if (image && (!image.startsWith("data:image/") || image.length > 450000)) return;
         const item = { id: crypto.randomUUID(), name, text, image, time: new Date().toISOString() };
-        const current = (await this.state.storage.get("messages")) || [];
+        const current = await this.pruneOldMessages();
         current.push(item);
         if (current.length > 500) current.splice(0, current.length - 500);
         await this.state.storage.put("messages", current);
+        await this.scheduleCleanup();
         const payload = JSON.stringify({ type: "message", message: item });
         for (const ws of this.sessions.values()) { try { ws.send(payload); } catch (_) {} }
         if (name === "지연") await this.sendPushToMe(item);
