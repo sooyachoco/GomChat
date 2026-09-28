@@ -119,6 +119,7 @@ export class ChatRoom {
     server.addEventListener("message", async event => {
       try {
         const msg = JSON.parse(event.data);
+
         if (msg.type === "delete") {
           const messageId = String(msg.messageId || "");
           const requester = String(msg.name || "").slice(0, 20);
@@ -132,6 +133,23 @@ export class ChatRoom {
           for (const ws of this.sessions.values()) { try { ws.send(payload); } catch (_) {} }
           return;
         }
+
+        if (msg.type === "edit") {
+          const messageId = String(msg.messageId || "");
+          const requester = String(msg.name || "").slice(0, 20);
+          const text = String(msg.text || "").slice(0, 2000);
+          if (!messageId || !requester || !text) return;
+          const current = (await this.state.storage.get("messages")) || [];
+          const target = current.find(m => m.id === messageId);
+          if (!target || target.name !== requester || target.image) return;
+          target.text = text;
+          target.editedAt = new Date().toISOString();
+          await this.state.storage.put("messages", current);
+          const payload = JSON.stringify({ type: "edit", message: target });
+          for (const ws of this.sessions.values()) { try { ws.send(payload); } catch (_) {} }
+          return;
+        }
+
         if (msg.type !== "message") return;
         const name = String(msg.name || "익명").slice(0, 20);
         const text = String(msg.text || "").slice(0, 2000);
