@@ -141,7 +141,7 @@ export class ChatRoom {
           if (!messageId || !requester || !text) return;
           const current = (await this.state.storage.get("messages")) || [];
           const target = current.find(m => m.id === messageId);
-          if (!target || target.name !== requester || target.image) return;
+          if (!target || target.name !== requester || target.image || target.emoticon) return;
           target.text = text;
           target.editedAt = new Date().toISOString();
           await this.state.storage.put("messages", current);
@@ -154,9 +154,10 @@ export class ChatRoom {
         const name = String(msg.name || "익명").slice(0, 20);
         const text = String(msg.text || "").slice(0, 2000);
         const image = typeof msg.image === "string" ? msg.image : "";
-        if (!text && !image) return;
+        const emoticon = typeof msg.emoticon === "string" && /^\d{2}\.png$/.test(msg.emoticon) ? msg.emoticon : "";
+        if (!text && !image && !emoticon) return;
         if (image && (!image.startsWith("data:image/") || image.length > 450000)) return;
-        const item = { id: crypto.randomUUID(), name, text, image, time: new Date().toISOString() };
+        const item = { id: crypto.randomUUID(), name, text, image, emoticon, time: new Date().toISOString() };
         const current = await this.pruneOldMessages();
         current.push(item);
         if (current.length > 500) current.splice(0, current.length - 500);
@@ -185,7 +186,7 @@ export class ChatRoom {
       try {
         const delivered = await sendPushNotification(sub, {
           title: "곰채팅",
-          body: item.text ? item.text.slice(0, 100) : "사진을 보냈어요.",
+          body: item.text ? item.text.slice(0, 100) : (item.emoticon ? "이모티콘을 보냈어요." : "사진을 보냈어요."),
           url: "/",
           tag: "gomchat-message"
         }, { publicKey, privateKey, subject }, { ttl: 86400, urgency: "high", topic: "gomchat-message" });
