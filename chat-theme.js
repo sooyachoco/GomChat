@@ -9,143 +9,39 @@
   const style=document.createElement('style');
   style.textContent=`
     .edit-btn{display:none;position:absolute;top:-25px;right:42px;background:#fff;border:1px solid #e5d9cf;border-radius:10px;padding:4px 8px;font-size:11px;color:#806b5d;box-shadow:0 2px 8px rgba(0,0,0,.08);cursor:pointer}.me .bubble:hover .edit-btn,.me .bubble:focus-within .edit-btn{display:block}.edited-mark{margin-left:4px;color:#a08f82;font-size:9px}
-    .emoticon-btn{width:44px!important;height:48px!important;background:#f4e9df!important;color:#806b5d!important;font-size:22px!important;padding:0!important;flex:none}
+    .emoticon-btn{position:absolute!important;right:52px!important;bottom:7px!important;width:30px!important;height:30px!important;min-width:30px!important;border:0!important;border-radius:50%!important;background:transparent!important;color:#806b5d!important;font-size:18px!important;padding:0!important;margin:0!important;display:flex!important;align-items:center!important;justify-content:center!important;z-index:5!important;cursor:pointer!important;opacity:.82!important}.emoticon-btn:hover{opacity:1!important;background:#f5ece5!important}
     .emoticon-picker{position:absolute;z-index:50;left:8px;right:8px;bottom:62px;background:rgba(255,250,245,.98);border:1px solid #e5d9cf;border-radius:18px;padding:10px;box-shadow:0 8px 28px rgba(65,48,35,.18);display:grid;grid-template-columns:repeat(4,1fr);gap:7px;max-height:260px;overflow:auto}
-    .emoticon-picker.hidden{display:none}
-    .emoticon-item{border:0;background:#fff;border-radius:14px;padding:5px;aspect-ratio:1;cursor:pointer;box-shadow:0 1px 5px rgba(70,55,43,.08)}
-    .emoticon-item:hover,.emoticon-item:active{background:#f7eee7;transform:translateY(-1px)}
-    .emoticon-item img{width:100%;height:100%;object-fit:contain;display:block}
-    .emoticon-img{display:block!important;width:150px!important;height:150px!important;max-width:150px!important;max-height:150px!important;object-fit:contain!important;border-radius:0!important}
-    .emoticon-message .bubble{padding:5px;background:transparent!important;border-color:transparent!important;box-shadow:none!important}
-    .emoticon-message .msg-meta{padding-right:4px}
-    .inputbar{position:relative}
+    .emoticon-picker.hidden{display:none}.emoticon-item{border:0;background:#fff;border-radius:14px;padding:5px;aspect-ratio:1;cursor:pointer;box-shadow:0 1px 5px rgba(70,55,43,.08)}.emoticon-item:hover,.emoticon-item:active{background:#f7eee7;transform:translateY(-1px)}.emoticon-item img{width:100%;height:100%;object-fit:contain;display:block}
+    .emoticon-img{display:block!important;width:150px!important;height:150px!important;max-width:150px!important;max-height:150px!important;object-fit:contain!important;border-radius:0!important}.emoticon-message .bubble{padding:5px;background:transparent!important;border-color:transparent!important;box-shadow:none!important}.emoticon-message .msg-meta{padding-right:4px}.inputbar{position:relative}
   `;
   document.head.appendChild(style);
 
-  const EMOTICONS=[
-    ['01.png','ㅋㅋㅋㅋ'],['02.png','미안해'],['03.png','고마워'],['04.png','흥!'],
-    ['05.png','힘내'],['06.png','잘자'],['07.png','보고싶어...'],['08.png','사랑해'],
-    ['09.png','화이팅!'],['10.png','안녕?'],['11.png','배고파'],['12.png','한잔할래?']
-  ];
+  const EMOTICONS=[['01.png','ㅋㅋㅋㅋ'],['02.png','미안해'],['03.png','고마워'],['04.png','흥!'],['05.png','힘내'],['06.png','잘자'],['07.png','보고싶어...'],['08.png','사랑해'],['09.png','화이팅!'],['10.png','안녕?'],['11.png','배고파'],['12.png','한잔할래?']];
   const emoticonById=new Map();
 
   function renderEmoticon(id,file){
-    if(!id||!file)return;
-    const row=root.querySelector('.row[data-id="'+CSS.escape(id)+'"]');
-    if(!row)return;
-    const bubble=row.querySelector('.bubble');
-    if(!bubble)return;
-    const existing=bubble.querySelector('.emoticon-img');
-    const meta=bubble.querySelector('.msg-meta');
-    if(existing){existing.src='./emoticons/'+file;return;}
-    [...bubble.childNodes].forEach(n=>{
-      if(n!==meta&&!n.classList?.contains('delete-btn')&&!n.classList?.contains('edit-btn'))n.remove();
-    });
-    const img=document.createElement('img');
-    img.className='emoticon-img';
-    img.src='./emoticons/'+file;
-    img.alt=EMOTICONS.find(x=>x[0]===file)?.[1]||'이모티콘';
-    img.loading='lazy';
-    bubble.insertBefore(img,meta||null);
-    row.classList.add('emoticon-message');
+    if(!id||!file)return;const row=root.querySelector('.row[data-id="'+CSS.escape(id)+'"]');if(!row)return;const bubble=row.querySelector('.bubble');if(!bubble)return;const existing=bubble.querySelector('.emoticon-img');const meta=bubble.querySelector('.msg-meta');if(existing){existing.src='./emoticons/'+file;return} [...bubble.childNodes].forEach(n=>{if(n!==meta&&!n.classList?.contains('delete-btn')&&!n.classList?.contains('edit-btn'))n.remove()});const img=document.createElement('img');img.className='emoticon-img';img.src='./emoticons/'+file;img.alt=EMOTICONS.find(x=>x[0]===file)?.[1]||'이모티콘';img.loading='lazy';bubble.insertBefore(img,meta||null);row.classList.add('emoticon-message')
   }
-
-  function renderKnownEmoticons(){
-    emoticonById.forEach((file,id)=>renderEmoticon(id,file));
-  }
+  function renderKnownEmoticons(){emoticonById.forEach((file,id)=>renderEmoticon(id,file))}
 
   function setupEmoticonPicker(){
     const form=document.querySelector('#form');
     const attach=document.querySelector('#attach');
     if(!form||!attach||document.querySelector('#emoticonBtn'))return;
-    const btn=document.createElement('button');
-    btn.id='emoticonBtn';btn.type='button';btn.className='emoticon-btn';btn.textContent='😊';btn.title='이모티콘';btn.setAttribute('aria-label','이모티콘');
-    attach.insertAdjacentElement('afterend',btn);
-
-    const picker=document.createElement('div');
-    picker.id='emoticonPicker';picker.className='emoticon-picker hidden';
-    EMOTICONS.forEach(([file,label])=>{
-      const item=document.createElement('button');
-      item.type='button';item.className='emoticon-item';item.title=label;item.setAttribute('aria-label',label);
-      const img=document.createElement('img');img.src='./emoticons/'+file;img.alt=label;img.loading='lazy';
-      item.append(img);
-      item.onclick=()=>{
-        if(typeof socket==='undefined'||!socket||socket.readyState!==WebSocket.OPEN)return;
-        socket.send(JSON.stringify({type:'message',name:me,text:'',image:'',emoticon:file}));
-        picker.classList.add('hidden');
-      };
-      picker.append(item);
-    });
-    form.append(picker);
-    btn.onclick=e=>{e.stopPropagation();picker.classList.toggle('hidden')};
-    document.addEventListener('click',e=>{if(!picker.contains(e.target)&&e.target!==btn)picker.classList.add('hidden')});
+    if(getComputedStyle(form).position==='static')form.style.position='relative';
+    const btn=document.createElement('button');btn.id='emoticonBtn';btn.type='button';btn.className='emoticon-btn';btn.textContent='😊';btn.title='이모티콘';btn.setAttribute('aria-label','이모티콘');
+    form.append(btn);
+    const picker=document.createElement('div');picker.id='emoticonPicker';picker.className='emoticon-picker hidden';
+    EMOTICONS.forEach(([file,label])=>{const item=document.createElement('button');item.type='button';item.className='emoticon-item';item.title=label;item.setAttribute('aria-label',label);const img=document.createElement('img');img.src='./emoticons/'+file;img.alt=label;img.loading='lazy';item.append(img);item.onclick=()=>{if(typeof socket==='undefined'||!socket||socket.readyState!==WebSocket.OPEN)return;socket.send(JSON.stringify({type:'message',name:me,text:'',image:'',emoticon:file}));picker.classList.add('hidden')};picker.append(item)});
+    form.append(picker);btn.onclick=e=>{e.stopPropagation();picker.classList.toggle('hidden')};document.addEventListener('click',e=>{if(!picker.contains(e.target)&&e.target!==btn)picker.classList.add('hidden')})
   }
   setupEmoticonPicker();
 
   function getRow(id){return root.querySelector('.row[data-id="'+CSS.escape(id)+'"]')}
-  function getEditText(bubble){
-    const clone=bubble.cloneNode(true);
-    clone.querySelectorAll('img,.msg-meta,.delete-btn,.edit-btn').forEach(e=>e.remove());
-    return clone.textContent.trim();
-  }
-  function markEdited(id,text){
-    const row=getRow(id); if(!row)return;
-    const bubble=row.querySelector('.bubble'); if(!bubble)return;
-    const meta=bubble.querySelector('.msg-meta');
-    const buttons=[...bubble.querySelectorAll('.delete-btn,.edit-btn')];
-    [...bubble.childNodes].forEach(n=>{if(n!==meta&&!buttons.includes(n)&&n.nodeName!=='IMG')n.remove()});
-    if(text){
-      const frag=typeof linkify==='function'?linkify(text):document.createTextNode(text);
-      bubble.insertBefore(frag,meta||null);
-    }
-    if(meta){
-      meta.querySelector('.edited-mark')?.remove();
-      const mark=document.createElement('span');mark.className='edited-mark';mark.textContent='(수정됨)';meta.append(mark);
-    }
-  }
-  function addEditButtons(){
-    root.querySelectorAll('.me .bubble').forEach(bubble=>{
-      if(bubble.querySelector('img')||bubble.querySelector('.edit-btn'))return;
-      const del=bubble.querySelector('.delete-btn');
-      if(!del)return;
-      const btn=document.createElement('button');
-      btn.className='edit-btn';btn.type='button';btn.textContent='수정';
-      btn.addEventListener('click',()=>{
-        const row=bubble.closest('.row');
-        if(!row||typeof socket==='undefined'||socket?.readyState!==WebSocket.OPEN)return;
-        const oldText=getEditText(bubble);
-        const next=prompt('메시지를 수정하세요.',oldText);
-        if(next===null)return;
-        const value=next.trim();
-        if(!value||value===oldText)return;
-        socket.send(JSON.stringify({type:'edit',messageId:row.dataset.id,name:me,text:value}));
-      });
-      bubble.append(btn);
-    });
-  }
-  const observer=new MutationObserver(()=>{addEditButtons();renderKnownEmoticons()});
-  observer.observe(root,{childList:true,subtree:true});
-  addEditButtons();
+  function getEditText(bubble){const clone=bubble.cloneNode(true);clone.querySelectorAll('img,.msg-meta,.delete-btn,.edit-btn').forEach(e=>e.remove());return clone.textContent.trim()}
+  function markEdited(id,text){const row=getRow(id);if(!row)return;const bubble=row.querySelector('.bubble');if(!bubble)return;const meta=bubble.querySelector('.msg-meta');const buttons=[...bubble.querySelectorAll('.delete-btn,.edit-btn')];[...bubble.childNodes].forEach(n=>{if(n!==meta&&!buttons.includes(n)&&n.nodeName!=='IMG')n.remove()});if(text){const frag=typeof linkify==='function'?linkify(text):document.createTextNode(text);bubble.insertBefore(frag,meta||null)}if(meta){meta.querySelector('.edited-mark')?.remove();const mark=document.createElement('span');mark.className='edited-mark';mark.textContent='(수정됨)';meta.append(mark)}}
+  function addEditButtons(){root.querySelectorAll('.me .bubble').forEach(bubble=>{if(bubble.querySelector('img')||bubble.querySelector('.edit-btn'))return;const del=bubble.querySelector('.delete-btn');if(!del)return;const btn=document.createElement('button');btn.className='edit-btn';btn.type='button';btn.textContent='수정';btn.addEventListener('click',()=>{const row=bubble.closest('.row');if(!row||typeof socket==='undefined'||socket?.readyState!==WebSocket.OPEN)return;const oldText=getEditText(bubble);const next=prompt('메시지를 수정하세요.',oldText);if(next===null)return;const value=next.trim();if(!value||value===oldText)return;socket.send(JSON.stringify({type:'edit',messageId:row.dataset.id,name:me,text:value}))});bubble.append(btn)})}
+  const observer=new MutationObserver(()=>{addEditButtons();renderKnownEmoticons()});observer.observe(root,{childList:true,subtree:true});addEditButtons();
 
-  let hookedSocket=null;
-  function hookSocket(){
-    if(typeof socket==='undefined'||!socket||socket===hookedSocket)return;
-    hookedSocket=socket;
-    socket.addEventListener('message',e=>{
-      try{
-        const x=JSON.parse(e.data);
-        if(x.type==='message'&&x.message?.emoticon){
-          emoticonById.set(x.message.id,String(x.message.emoticon));
-          setTimeout(()=>renderEmoticon(x.message.id,String(x.message.emoticon)),0);
-        }
-        if(x.type==='history'&&Array.isArray(x.messages)){
-          x.messages.forEach(m=>{if(m.emoticon)emoticonById.set(m.id,String(m.emoticon))});
-          setTimeout(()=>{renderKnownEmoticons();x.messages.forEach(m=>{if(m.editedAt)markEdited(m.id,String(m.text||''))})},0);
-        }
-        if(x.type==='edit'&&x.message){markEdited(x.message.id,String(x.message.text||''));}
-      }catch(_){ }
-    });
-  }
-  setInterval(hookSocket,250);
-  hookSocket();
+  let hookedSocket=null;function hookSocket(){if(typeof socket==='undefined'||!socket||socket===hookedSocket)return;hookedSocket=socket;socket.addEventListener('message',e=>{try{const x=JSON.parse(e.data);if(x.type==='message'&&x.message?.emoticon){emoticonById.set(x.message.id,String(x.message.emoticon));setTimeout(()=>renderEmoticon(x.message.id,String(x.message.emoticon)),0)}if(x.type==='history'&&Array.isArray(x.messages)){x.messages.forEach(m=>{if(m.emoticon)emoticonById.set(m.id,String(m.emoticon))});setTimeout(()=>{renderKnownEmoticons();x.messages.forEach(m=>{if(m.editedAt)markEdited(m.id,String(m.text||''))})},0)}if(x.type==='edit'&&x.message){markEdited(x.message.id,String(x.message.text||''))}}catch(_){}})}setInterval(hookSocket,250);hookSocket();
 })();
