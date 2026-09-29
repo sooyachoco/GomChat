@@ -9,7 +9,7 @@
   const style=document.createElement('style');
   style.textContent=`
     .edit-btn{display:none;position:absolute;top:-25px;right:42px;background:#fff;border:1px solid #e5d9cf;border-radius:10px;padding:4px 8px;font-size:11px;color:#806b5d;box-shadow:0 2px 8px rgba(0,0,0,.08);cursor:pointer}.me .bubble:hover .edit-btn,.me .bubble:focus-within .edit-btn{display:block}.edited-mark{margin-left:4px;color:#a08f82;font-size:9px}
-    .emoticon-btn{position:absolute!important;right:52px!important;bottom:7px!important;width:30px!important;height:30px!important;min-width:30px!important;border:0!important;border-radius:50%!important;background:transparent!important;color:#806b5d!important;font-size:18px!important;padding:0!important;margin:0!important;display:flex!important;align-items:center!important;justify-content:center!important;z-index:5!important;cursor:pointer!important;opacity:.82!important}.emoticon-btn:hover{opacity:1!important;background:#f5ece5!important}
+    .emoticon-btn{position:absolute!important;width:36px!important;height:36px!important;min-width:36px!important;border:0!important;border-radius:50%!important;background:transparent!important;color:#806b5d!important;font-size:21px!important;padding:0!important;margin:0!important;display:flex!important;align-items:center!important;justify-content:center!important;z-index:8!important;cursor:pointer!important;opacity:.9!important;box-sizing:border-box!important}.emoticon-btn:hover{opacity:1!important;background:#f5ece5!important}
     .emoticon-picker{position:absolute;z-index:50;left:8px;right:8px;bottom:62px;background:rgba(255,250,245,.98);border:1px solid #e5d9cf;border-radius:18px;padding:10px;box-shadow:0 8px 28px rgba(65,48,35,.18);display:grid;grid-template-columns:repeat(4,1fr);gap:7px;max-height:260px;overflow:auto}
     .emoticon-picker.hidden{display:none}.emoticon-item{border:0;background:#fff;border-radius:14px;padding:5px;aspect-ratio:1;cursor:pointer;box-shadow:0 1px 5px rgba(70,55,43,.08)}.emoticon-item:hover,.emoticon-item:active{background:#f7eee7;transform:translateY(-1px)}.emoticon-item img{width:100%;height:100%;object-fit:contain;display:block}
     .emoticon-img{display:block!important;width:150px!important;height:150px!important;max-width:150px!important;max-height:150px!important;object-fit:contain!important;border-radius:0!important}.emoticon-message .bubble{padding:5px;background:transparent!important;border-color:transparent!important;box-shadow:none!important}.emoticon-message .msg-meta{padding-right:4px}.inputbar{position:relative}
@@ -33,7 +33,20 @@
     form.append(btn);
     const picker=document.createElement('div');picker.id='emoticonPicker';picker.className='emoticon-picker hidden';
     EMOTICONS.forEach(([file,label])=>{const item=document.createElement('button');item.type='button';item.className='emoticon-item';item.title=label;item.setAttribute('aria-label',label);const img=document.createElement('img');img.src='./emoticons/'+file;img.alt=label;img.loading='lazy';item.append(img);item.onclick=()=>{if(typeof socket==='undefined'||!socket||socket.readyState!==WebSocket.OPEN)return;socket.send(JSON.stringify({type:'message',name:me,text:'',image:'',emoticon:file}));picker.classList.add('hidden')};picker.append(item)});
-    form.append(picker);btn.onclick=e=>{e.stopPropagation();picker.classList.toggle('hidden')};document.addEventListener('click',e=>{if(!picker.contains(e.target)&&e.target!==btn)picker.classList.add('hidden')})
+    form.append(picker);
+
+    const field=form.querySelector('input,textarea');
+    function placeButton(){
+      if(!field)return;
+      const formRect=form.getBoundingClientRect(),fieldRect=field.getBoundingClientRect();
+      btn.style.left=(fieldRect.right-formRect.left-46)+'px';
+      btn.style.top=(fieldRect.top-formRect.top+(fieldRect.height-36)/2)+'px';
+    }
+    placeButton();
+    window.addEventListener('resize',placeButton);
+    if(window.ResizeObserver)new ResizeObserver(placeButton).observe(form);
+    btn.onclick=e=>{e.stopPropagation();picker.classList.toggle('hidden')};
+    document.addEventListener('click',e=>{if(!picker.contains(e.target)&&e.target!==btn)picker.classList.add('hidden')});
   }
   setupEmoticonPicker();
 
