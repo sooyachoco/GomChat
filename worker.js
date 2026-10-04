@@ -120,6 +120,28 @@ export class ChatRoom {
       try {
         const msg = JSON.parse(event.data);
 
+        if (msg.type === "react") {
+          const messageId = String(msg.messageId || "");
+          const requester = String(msg.name || "").slice(0, 20);
+          const allowed = new Set(["❤️", "👍", "😂", "😮", "😢", "👏", "🥰", "🔥"]);
+          const emoji = String(msg.emoji || "");
+          if (!messageId || !requester || !allowed.has(emoji)) return;
+          const current = (await this.state.storage.get("messages")) || [];
+          const target = current.find(m => m.id === messageId);
+          if (!target || target.name === requester || target.image || target.emoticon) return;
+          target.reactions = target.reactions && typeof target.reactions === "object" ? target.reactions : {};
+          const users = Array.isArray(target.reactions[emoji]) ? target.reactions[emoji].filter(Boolean) : [];
+          const index = users.indexOf(requester);
+          if (index >= 0) users.splice(index, 1);
+          else if (users.length < 50) users.push(requester);
+          if (users.length) target.reactions[emoji] = users;
+          else delete target.reactions[emoji];
+          await this.state.storage.put("messages", current);
+          const payload = JSON.stringify({ type: "reaction", messageId, reactions: target.reactions });
+          for (const ws of this.sessions.values()) { try { ws.send(payload); } catch (_) {} }
+          return;
+        }
+
         if (msg.type === "delete") {
           const messageId = String(msg.messageId || "");
           const requester = String(msg.name || "").slice(0, 20);
@@ -157,7 +179,7 @@ export class ChatRoom {
         const emoticon = typeof msg.emoticon === "string" && /^\d{2}\.png$/.test(msg.emoticon) ? msg.emoticon : "";
         if (!text && !image && !emoticon) return;
         if (image && (!image.startsWith("data:image/") || image.length > 450000)) return;
-        const item = { id: crypto.randomUUID(), name, text, image, emoticon, time: new Date().toISOString() };
+        const item = { id: crypto.randomUUID(), name, text, image, emoticon, reactions: {}, time: new Date().toISOString() };
         const current = await this.pruneOldMessages();
         current.push(item);
         if (current.length > 500) current.splice(0, current.length - 500);
