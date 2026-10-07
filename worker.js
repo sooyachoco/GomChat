@@ -3,6 +3,7 @@ import { sendPushNotification } from "@mmmike/web-push/send";
 const PUSH_USER = "승수";
 const RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
 const CLEANUP_INTERVAL_MS = 24 * 60 * 60 * 1000;
+const EDIT_DELETE_WINDOW_MS = 10 * 60 * 1000;
 
 export default {
   async fetch(request, env) {
@@ -149,6 +150,8 @@ export class ChatRoom {
           const current = (await this.state.storage.get("messages")) || [];
           const target = current.find(m => m.id === messageId);
           if (!target || target.name !== requester) return;
+          const createdAt = Date.parse(target.time || "");
+          if (!Number.isFinite(createdAt) || Date.now() - createdAt > EDIT_DELETE_WINDOW_MS) return;
           const next = current.filter(m => m.id !== messageId);
           await this.state.storage.put("messages", next);
           const payload = JSON.stringify({ type: "delete", messageId });
@@ -164,6 +167,8 @@ export class ChatRoom {
           const current = (await this.state.storage.get("messages")) || [];
           const target = current.find(m => m.id === messageId);
           if (!target || target.name !== requester || target.image || target.emoticon) return;
+          const createdAt = Date.parse(target.time || "");
+          if (!Number.isFinite(createdAt) || Date.now() - createdAt > EDIT_DELETE_WINDOW_MS) return;
           target.text = text;
           target.editedAt = new Date().toISOString();
           await this.state.storage.put("messages", current);
