@@ -1,7 +1,7 @@
 import { sendPushNotification } from "@mmmike/web-push/send";
 
 const PUSH_USER = "승수";
-const RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
+const RETENTION_MS = 3 * 24 * 60 * 60 * 1000;
 const CLEANUP_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const EDIT_DELETE_WINDOW_MS = 10 * 60 * 1000;
 
