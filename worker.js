@@ -4,7 +4,7 @@ const PUSH_USER = "승수";
 const RETENTION_MS = 3 * 24 * 60 * 60 * 1000;
 const CLEANUP_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const EDIT_DELETE_WINDOW_MS = 10 * 60 * 1000;
-const MEDIA_MAX_LENGTH = 8 * 1024 * 1024;
+const MEDIA_MAX_LENGTH = 10 * 1024 * 1024;
 
 export default {
   async fetch(request, env) {
