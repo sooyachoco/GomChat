@@ -4,6 +4,7 @@ const PUSH_USER = "승수";
 const RETENTION_MS = 3 * 24 * 60 * 60 * 1000;
 const CLEANUP_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const EDIT_DELETE_WINDOW_MS = 10 * 60 * 1000;
+const MEDIA_MAX_LENGTH = 8 * 1024 * 1024;
 
 export default {
   async fetch(request, env) {
@@ -181,10 +182,12 @@ export class ChatRoom {
         const name = String(msg.name || "익명").slice(0, 20);
         const text = String(msg.text || "").slice(0, 2000);
         const image = typeof msg.image === "string" ? msg.image : "";
+        const media = typeof msg.media === "string" ? msg.media : "";
         const emoticon = typeof msg.emoticon === "string" && /^\d{2}\.png$/.test(msg.emoticon) ? msg.emoticon : "";
-        if (!text && !image && !emoticon) return;
+        if (!text && !image && !media && !emoticon) return;
         if (image && (!image.startsWith("data:image/") || image.length > 450000)) return;
-        const item = { id: crypto.randomUUID(), name, text, image, emoticon, reactions: {}, time: new Date().toISOString() };
+        if (media && (!/^data:(audio\/mpeg|audio\/mp3|video\/mp4|audio\/mp4);base64,/i.test(media) || media.length > MEDIA_MAX_LENGTH)) return;
+        const item = { id: crypto.randomUUID(), name, text, image, media, emoticon, reactions: {}, time: new Date().toISOString() };
         const current = await this.pruneOldMessages();
         current.push(item);
         if (current.length > 500) current.splice(0, current.length - 500);
