@@ -129,7 +129,7 @@ export class ChatRoom {
           if (!messageId || !requester || !allowed.has(emoji)) return;
           const current = (await this.state.storage.get("messages")) || [];
           const target = current.find(m => m.id === messageId);
-          if (!target || target.name === requester || target.image || target.emoticon) return;
+          if (!target || target.name === requester || target.emoticon) return;
           target.reactions = target.reactions && typeof target.reactions === "object" ? target.reactions : {};
           const users = Array.isArray(target.reactions[emoji]) ? target.reactions[emoji].filter(Boolean) : [];
           const index = users.indexOf(requester);
